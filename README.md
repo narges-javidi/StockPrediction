@@ -78,7 +78,7 @@ python app.py
 Feel free to fork this repository and contribute to improve this project! If you have any suggestions, open an issue or create a pull request.
 
 ## Author
-Priya Chanchal
+Priya Chanchal :)
 
 [![GitHub](https://img.shields.io/badge/GitHub-Priya--C--016-black?logo=github)](https://github.com/Priya-C-016)  
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Priya--Chanchal-blue?logo=linkedin)](https://www.linkedin.com/in/priya-chanchal-050b86288/)
