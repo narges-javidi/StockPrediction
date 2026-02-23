@@ -7,6 +7,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 import numpy as np
 from textblob import TextBlob
+from data.tse_data import get_tse_data
 
 # Fetch real-time stock data from Alpha Vantage (monthly data in this case)
 # def fetch_stock_data(symbol):
@@ -527,5 +528,12 @@ elif st.session_state.current_page == 'stock_news':
             )
     else:
         st.info("No news articles found. 📭")
+
+st.markdown("---")
+st.subheader("📊 تست اتصال به بورس تهران")
+
+if st.button("دریافت دیتای فولاد"):
+    df = get_tse_data("فولاد")
+    st.write(df.head())
 
 
