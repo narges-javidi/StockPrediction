@@ -7,34 +7,11 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 import numpy as np
 from textblob import TextBlob
-from data.tse_data import get_tse_data
+# فرض می کنیم این ماژول برای بورس تهران تعریف شده است.
+# اگر این ماژول در Render موجود نیست، بخش مربوط به آن را کامنت کنید.
+from data.tse_data import get_tse_data 
 
-# Fetch real-time stock data from Alpha Vantage (monthly data in this case)
-# def fetch_stock_data(symbol):
-#     API_KEY = 'NA3UHC1XJU4OQKKO'  # Replace with your Alpha Vantage API key
-#     url = f'https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY&symbol={symbol}&apikey={API_KEY}'
-    
-#     response = requests.get(url)
-#     data = response.json()
-    
-#     # Check if the data contains 'Monthly Time Series'
-#     if 'Monthly Time Series' in data:
-#         time_series = data['Monthly Time Series']
-#         # Convert the time series data into a pandas DataFrame
-#         df = pd.DataFrame.from_dict(time_series, orient='index')
-#         df = df[['4. close']]  # We only need the 'close' price
-#         df.columns = ['Close']
-        
-#         # Convert 'Close' column to numeric (float)
-#         df['Close'] = pd.to_numeric(df['Close'], errors='coerce')  # Convert to float, errors='coerce' will turn invalid values to NaN
-        
-#         df.index = pd.to_datetime(df.index)  # Convert the index to datetime
-#         df = df.sort_index()  # Sort by date
-        
-#         return df
-#     else:
-#         print("Error fetching data. Please check the symbol or try again.")
-#         return None
+# --- توابع کمکی (Auxiliary Functions) ---
 
 def fetch_stock_data(symbol):
     API_KEY = 'NA3UHC1XJU4OQKKO'  # Replace with your API key
@@ -49,7 +26,6 @@ def fetch_stock_data(symbol):
         print("Raw response:", response.text)
         return None
 
-    # Log the raw response if data is missing
     if 'Monthly Time Series' not in data:
         st.error(f"Alpha Vantage error for {symbol}: {data.get('Note') or data.get('Error Message') or data}")
         return None
@@ -76,28 +52,25 @@ def fetch_news(stock_ticker):
     else:
         st.error("Failed to fetch news. Check your API key or network.")
         return []
-# Preprocess stock data (e.g., use moving averages, lagged features)
+
 def preprocess_data(df):
-    df['SMA_50'] = df['Close'].rolling(window=50).mean()  # Simple Moving Average (50 days)
-    df['SMA_200'] = df['Close'].rolling(window=200).mean()  # Simple Moving Average (200 days)
-    df['Price_Change'] = df['Close'].pct_change()  # Daily price change percentage
-    df['Volatility'] = calculate_volatility(df)  # Add Volatility as a feature
-    df = df.dropna()  # Drop rows with NaN values
+    df['SMA_50'] = df['Close'].rolling(window=50).mean()
+    df['SMA_200'] = df['Close'].rolling(window=200).mean()
+    df['Price_Change'] = df['Close'].pct_change()
+    df['Volatility'] = calculate_volatility(df)
+    df = df.dropna()
     return df
 
 
-# Train a RandomForestRegressor model
 def train_model(df):
     features = ['SMA_50', 'SMA_200', 'Price_Change']
     X = df[features]
     y = df['Close']
     
 
-    # Check if the DataFrame is empty
     if X.empty or y.empty:
         st.error("No data available for training the model. Please check the stock data.")
-        return None  # Return None if there's no data
-    # Train/test split
+        return None
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
     
     model = RandomForestRegressor(n_estimators=100)
@@ -105,7 +78,6 @@ def train_model(df):
     
     return model
 
-# Predict stock price using the trained model
 def predict_stock_price(model, df):
     features = ['SMA_50', 'SMA_200', 'Price_Change']
     X = df[features]
@@ -121,28 +93,8 @@ def analyze_sentiment(article_title):
         return "Neutral", "gray"
     else:
         return "Negative", "red"
-def analyze_sentiment_and_recommendation(ticker):
-    news_articles = fetch_news(ticker)
     
-    sentiments = []
-    for article in news_articles[:5]:  # Top 5 news
-        sentiment, color = analyze_sentiment(article['content'])  # Use 'content' instead of 'title'
-        sentiments.append((sentiment, color))
-
-    return sentiments
-
 def calculate_moving_average(data, short_window=20, long_window=50):
-    """
-    Calculate short-term and long-term moving averages for the stock data.
-
-    Parameters:
-    - data: pandas DataFrame with stock data (must include 'Close' column).
-    - short_window: The window size for the short-term moving average.
-    - long_window: The window size for the long-term moving average.
-
-    Returns:
-    - pandas DataFrame containing moving averages.
-    """
     if 'Close' not in data.columns:
         raise ValueError("The input data must contain a 'Close' column.")
     
@@ -153,16 +105,6 @@ def calculate_moving_average(data, short_window=20, long_window=50):
     return moving_averages
 
 def calculate_volatility(data, window=30):
-    """
-    Calculate the rolling volatility for the stock data.
-
-    Parameters:
-    - data: pandas DataFrame with stock data (must include 'Close' column).
-    - window: The rolling window size for calculating volatility.
-
-    Returns:
-    - pandas Series containing the volatility values.
-    """
     if 'Close' not in data.columns:
         raise ValueError("The input data must contain a 'Close' column.")
     
@@ -172,29 +114,26 @@ def calculate_volatility(data, window=30):
     return volatility
 
 def analyze_sentiment_and_recommendation(ticker):
-    # Fetch the latest news for the stock
     news_articles = fetch_news(ticker)
     
     sentiments = []
-    for article in news_articles[:5]:  # Top 5 news
+    for article in news_articles[:5]:
         sentiment, color = analyze_sentiment(article['title'])
         sentiments.append((sentiment, color))
 
     return sentiments
 
-# Recommendation with confidence based on model performance
 def make_recommendation(predicted_price, actual_price, model, processed_data):
     predicted_change = predicted_price - actual_price
 
-    # Calculate model performance (R² score)
     X = processed_data.drop(columns='Close')
     y = processed_data['Close']
-    r2_score = model.score(X, y)  # R² score of the model
+    r2_score = model.score(X, y)
 
-    recommendation = "Hold"  # Default
-    color = "orange"  # Default color
+    recommendation = "Hold"
+    color = "orange"
 
-    if r2_score > 0.8:  # High confidence
+    if r2_score > 0.8:
         if predicted_change > 0:
             recommendation = "Buy"
             color = "green"
@@ -204,27 +143,41 @@ def make_recommendation(predicted_price, actual_price, model, processed_data):
         else:
             recommendation = "Hold"
             color = "orange"
-    else:  # Low confidence
+    else:
         recommendation = "Hold"
         color = "orange"
     
     return recommendation, color, r2_score
 
 
+#-------- Initialization Block for Streamlit Session State --------
+# این بخش جدید است و اطمینان می دهد که state قبل از استفاده مقداردهی می شود.
 
-#--------app.py---------
+# 1. Navigation State
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 'home'
 
+# 2. Widget States (Keys used in the UI)
+# اینها کلیدهایی هستند که در بخش های مختلف برنامه استفاده می شوند.
+if 'ticker_select' not in st.session_state:
+    st.session_state.ticker_select = 'AAPL'
+if 'compare_checkbox' not in st.session_state:
+    st.session_state.compare_checkbox = False
+if 'tickers_compare' not in st.session_state:
+    st.session_state.tickers_compare = ['AAPL', 'GOOGL']
+if 'news_ticker_select' not in st.session_state:
+    st.session_state.news_ticker_select = 'AAPL'
+
+# 3. Data/Model Caching State (Optional but good practice)
+# اگرچه در کد شما از کش مبتنی بر فایل استفاده شده، اما تعریف اینجا به جلوگیری از ارور کمک می کند.
+if 'prediction_results' not in st.session_state:
+    st.session_state.prediction_results = {}
+
+# -------- End of Initialization Block --------
+
+# --- تنظیمات صفحه و استایل ها ---
 st.set_page_config(page_title="Stock Predictor", page_icon="📈 ", layout="wide")
 
-# Predefined list of stock symbols
-stock_symbols = [
-    'AAPL', 'GOOGL', 'TSLA', 'AMZN', 'MSFT', 'FB', 'NVDA', 'SPY', 'NFLX', 'AMD',
-    'IBM', 'BABA', 'NFLX', 'BA', 'GS', 'MS', 'GE', 'INTC', 'DIS', 'TSM',
-    'PYPL', 'SNAP', 'UBER', 'V', 'WMT', 'SPY', 'NVDA', 'SQ', 'LUV', 'CVX',
-    'XOM', 'MCD', 'PG', 'JPM', 'INTC', 'AMD', 'UNH', 'COP', 'PEP', 'KO', 'T'
-]
-
-# Streamlit app title
 st.markdown(
     """
     <style>
@@ -237,23 +190,8 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Default view is home page
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = 'home'
-
-# Buttons for navigation
-if st.sidebar.button("🏠 Home Page"):
-    st.session_state.current_page = 'home'
-if st.sidebar.button("📊 Stock Info"):
-    st.session_state.current_page = 'stock_info'
-if st.sidebar.button("📰 Stock News"):
-    st.session_state.current_page = 'stock_news'
-
-# Display content based on current page
-if st.session_state.current_page == 'home':
-
-    # Title and Subtitle with updated professional styles
-    st.markdown("""
+# --- Style Definitions (Copied from your original code) ---
+st.markdown("""
     <style>
         /* Global Font and Body Styling */
         body {
@@ -284,13 +222,20 @@ if st.session_state.current_page == 'home':
         
     </style>
     """, unsafe_allow_html=True)
+# --- End Style Definitions ---
 
-    # Main container with background and styling
+# Buttons for navigation (Using session_state values)
+if st.sidebar.button("🏠 Home Page"):
+    st.session_state.current_page = 'home'
+if st.sidebar.button("📊 Stock Info"):
+    st.session_state.current_page = 'stock_info'
+if st.sidebar.button("📰 Stock News"):
+    st.session_state.current_page = 'stock_news'
 
-    # Title and Subtitle
-    # st.markdown("<h1 class='title'>📈 Advanced Stock Price Prediction App 📉</h1>", unsafe_allow_html=True)
-    # st.markdown("<p class='subtitle'>Your Professional Tool for Stock Analysis and Market Insights 🚀</p>", unsafe_allow_html=True)
-    # Sample data for candlestick chart (you can replace this with real data or use more points)
+# Display content based on current page
+if st.session_state.current_page == 'home':
+
+    # Sample data for candlestick chart
     data = {
         'Date': pd.date_range(start='2024-12-01', periods=6, freq='D'),
         'Open': [150, 155, 160, 162, 165, 167],
@@ -299,10 +244,8 @@ if st.session_state.current_page == 'home':
         'Close': [153, 158, 162, 164, 168, 170]
     }
     
-    # Convert the data into a DataFrame
     df = pd.DataFrame(data)
     
-    # Create a candlestick chart using Plotly
     fig = go.Figure(data=[go.Candlestick(
         x=df['Date'],
         open=df['Open'],
@@ -313,17 +256,14 @@ if st.session_state.current_page == 'home':
         decreasing_line_color='red'
     )])
 
-    # Update layout for better presentation
     fig.update_layout(
         title="Stock Price Candlestick Chart",
         xaxis_title="Date",
         yaxis_title="Price (USD)",
-        template="plotly_dark",  # You can change the theme
-        xaxis_rangeslider_visible=False,  # Remove range slider
+        template="plotly_dark",
+        xaxis_rangeslider_visible=False,
     )
     
-    # Display the chart in Streamlit
-    # st.title("Welcome to Stock Market Dashboard")
     st.markdown("<h1 class='title'>📈 Advanced Stock Price Prediction App 📉</h1>", unsafe_allow_html=True)
     st.markdown("<p class='subtitle'>Your Professional Tool for Stock Analysis and Market Insights 🚀</p>", unsafe_allow_html=True)
 
@@ -338,7 +278,7 @@ elif st.session_state.current_page == 'stock_info':
         unsafe_allow_html=True
     )
     
-    # Dropdown for stock symbol selection
+    # Dropdown for stock symbol selection (Uses session_state key)
     ticker = st.selectbox(
         "🎯 **Select a Stock Symbol**", 
         stock_symbols,
@@ -346,7 +286,7 @@ elif st.session_state.current_page == 'stock_info':
         key="ticker_select"
     )
 
-    # Checkbox to compare multiple stocks
+    # Checkbox to compare multiple stocks (Uses session_state key)
     comparison = st.checkbox('Compare multiple stocks', key="compare_checkbox")
     if comparison:
         tickers_to_compare = st.multiselect(
@@ -359,26 +299,21 @@ elif st.session_state.current_page == 'stock_info':
     else:
          tickers_to_compare = [ticker] 
     
-    # Initialize a dictionary to store the predicted prices
     predictions_dict = {}
 
-    # Directory to store cached data
     CACHE_DIR = 'cached_stock_data'
     if not os.path.exists(CACHE_DIR):
         os.makedirs(CACHE_DIR)
 
-    # Function to cache stock data locally
     def save_to_cache(ticker, data):
         data.to_csv(os.path.join(CACHE_DIR, f"{ticker}.csv"))
 
-    # Function to load cached stock data
     def load_from_cache(ticker):
         file_path = os.path.join(CACHE_DIR, f"{ticker}.csv")
         if os.path.exists(file_path):
             return pd.read_csv(file_path, index_col=0, parse_dates=True)
         return None
 
-    # Function to create stock prediction plot
     def create_stock_plot(data, predictions, ticker):
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=data.index, y=data['Close'], mode='lines', name='Actual Price', line=dict(color='blue')))
@@ -395,13 +330,13 @@ elif st.session_state.current_page == 'stock_info':
 
     # Fetch data and predict for selected stocks
     for ticker in tickers_to_compare:
-        # Try to load cached data
+        # NOTE: In a real deployment, file I/O (like caching) can be tricky in serverless environments. 
+        # If this caching causes issues on Render, remove the load/save functions and always fetch the data.
         cached_data = load_from_cache(ticker)
 
         if cached_data is not None:
             data = cached_data
         else:
-            # If data is not cached, fetch from the API
             data = fetch_stock_data(ticker)
             if data is not None and not data.empty:
                 save_to_cache(ticker, data)
@@ -409,7 +344,6 @@ elif st.session_state.current_page == 'stock_info':
                 st.error(f"❌ Failed to fetch data for {ticker}. Please check the stock ticker.")
                 continue
 
-        # Preprocess data and make predictions
         processed_data = preprocess_data(data)
         if processed_data.empty:
             st.error(f"No valid data available for {ticker} after preprocessing.")
@@ -419,12 +353,10 @@ elif st.session_state.current_page == 'stock_info':
            continue
         predictions = predict_stock_price(model, processed_data)
 
-        # Store predictions
-        predictions_dict[ticker] = predictions[-1]  # Store the last predicted price
+        predictions_dict[ticker] = predictions[-1]
 
-        # Display prediction plot
         st.plotly_chart(create_stock_plot(processed_data, predictions, ticker))
-    # Display predictions for all selected stocks
+        
     if predictions_dict:
         highest_stock = max(predictions_dict, key=predictions_dict.get)
         lowest_stock = min(predictions_dict, key=predictions_dict.get)
@@ -437,41 +369,49 @@ elif st.session_state.current_page == 'stock_info':
             f"📉 **Stock with the lowest predicted price:** `{lowest_stock}` - **${predictions_dict[lowest_stock]:.2f}**"
         )
 
-        # Recommendations with custom styling
         st.markdown("### 💡 **Recommendations:**")
         for ticker in tickers_to_compare:
-            # Get the last actual closing price
-            last_close_price = data['Close'].iloc[-1]
+            # Check if data was successfully processed for this ticker before accessing its index
+            try:
+                # Re-fetch data to get the last actual closing price for comparison
+                current_data = fetch_stock_data(ticker) 
+                if current_data is None or current_data.empty: continue
+                last_close_price = current_data['Close'].iloc[-1]
 
-            # Calculate the price change
-            predicted_change = predictions_dict[ticker] - last_close_price
+                predicted_price = predictions_dict.get(ticker)
+                if predicted_price is None: continue
 
-            # Determine recommendation
-            if predicted_change > 0:
-                recommendation = "Buy"
-                color = "#2b9c5a"  # Green for Buy
-            elif predicted_change == 0:
-                recommendation = "Hold"
-                color = "#f4a300"  # Orange for Hold
-            else:
-                recommendation = "Sell"
-                color = "#e63946"  # Red for Sell
+                predicted_change = predicted_price - last_close_price
 
-            st.markdown(f"""
-                <div style="
-                    display: inline-block;
-                    padding: 10px 20px;
-                    margin: 5px;
-                    background-color: {color};
-                    color: white;
-                    font-weight: bold;
-                    border-radius: 8px;
-                    text-align: center;
-                    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
-                ">
-                    {ticker}: {recommendation} (${predicted_change:.2f})
-                </div>
-            """, unsafe_allow_html=True)
+                if predicted_change > 0:
+                    recommendation = "Buy"
+                    color = "#2b9c5a"
+                elif predicted_change == 0:
+                    recommendation = "Hold"
+                    color = "#f4a300"
+                else:
+                    recommendation = "Sell"
+                    color = "#e63946"
+
+                st.markdown(f"""
+                    <div style="
+                        display: inline-block;
+                        padding: 10px 20px;
+                        margin: 5px;
+                        background-color: {color};
+                        color: white;
+                        font-weight: bold;
+                        border-radius: 8px;
+                        text-align: center;
+                        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+                    ">
+                        {ticker}: {recommendation} (${predicted_change:.2f})
+                    </div>
+                """, unsafe_allow_html=True)
+            except Exception as e:
+                # Catch errors if data loading fails mid-loop
+                st.warning(f"Could not generate recommendation for {ticker} due to data loading issue.")
+
 
 elif st.session_state.current_page == 'stock_news':
     # Stock news page content
@@ -486,12 +426,11 @@ elif st.session_state.current_page == 'stock_news':
     news_articles = fetch_news(news_ticker)
 
     if news_articles:
-        for article in news_articles[:5]:  # Show top 5 news articles
+        for article in news_articles[:5]:
             title = article['title']
             url = article['url']
             source = article['source']['name']
 
-            # Analyze sentiment
             sentiment, color = analyze_sentiment(title)
 
             st.markdown(
@@ -533,7 +472,11 @@ st.markdown("---")
 st.subheader("📊 تست اتصال به بورس تهران")
 
 if st.button("دریافت دیتای فولاد"):
-    df = get_tse_data("فولاد")
-    st.write(df.head())
-
-
+    # این بخش به دلیل ماهیت محیط Render ممکن است نیاز به کتابخانه های خاص داشته باشد.
+    try:
+        df = get_tse_data("فولاد")
+        st.write(df.head())
+    except NameError:
+        st.error("ماژول 'data.tse_data' یا تابع 'get_tse_data' تعریف نشده یا در محیط Render قابل دسترسی نیست.")
+    except Exception as e:
+        st.error(f"خطا در دریافت داده از بورس تهران: {e}")
