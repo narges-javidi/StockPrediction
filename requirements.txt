@@ -1,5 +1,5 @@
 pytse-client
-streamlit
+streamlit==1.28.0  # یک نسخه پایدار Streamlit با پایتون 3.10
 scikit-learn
 pandas==1.5.3
 numpy==1.23.5
@@ -8,5 +8,6 @@ seaborn
 plotly
 textblob
 requests
+
 
 
