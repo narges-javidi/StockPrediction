@@ -1,11 +1,12 @@
 pytse-client
 streamlit
 scikit-learn
-pandas
-numpy
+pandas==1.5.3
+numpy==1.23.5
 matplotlib
 seaborn
 plotly
 textblob
 requests
+
 
